@@ -1,27 +1,29 @@
 {
   "format": 1,
   "restore": {
-    "/Users/apple/Desktop/ManualCalories/IMS_CGM_Mobile_App.csproj": {}
+    "C:\\Users\\hp\\IMS_CGM_Mobile_App\\ManualCalories\\IMS_CGM_Mobile_App.csproj": {}
   },
   "projects": {
-    "/Users/apple/Desktop/ManualCalories/IMS_CGM_Mobile_App.csproj": {
+    "C:\\Users\\hp\\IMS_CGM_Mobile_App\\ManualCalories\\IMS_CGM_Mobile_App.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/apple/Desktop/ManualCalories/IMS_CGM_Mobile_App.csproj",
+        "projectUniqueName": "C:\\Users\\hp\\IMS_CGM_Mobile_App\\ManualCalories\\IMS_CGM_Mobile_App.csproj",
         "projectName": "IMS_CGM_Mobile_App",
-        "projectPath": "/Users/apple/Desktop/ManualCalories/IMS_CGM_Mobile_App.csproj",
-        "packagesPath": "/Users/apple/.nuget/packages/",
-        "outputPath": "/Users/apple/Desktop/ManualCalories/obj/",
+        "projectPath": "C:\\Users\\hp\\IMS_CGM_Mobile_App\\ManualCalories\\IMS_CGM_Mobile_App.csproj",
+        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\hp\\IMS_CGM_Mobile_App\\ManualCalories\\obj\\",
         "projectStyle": "PackageReference",
         "crossTargeting": true,
         "configFilePaths": [
-          "/Users/apple/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0-android"
         ],
         "sources": {
-          "/usr/local/share/dotnet/library-packs": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -34,6 +36,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -67,7 +74,7 @@
             "Microsoft.NET.ILLink.Tasks": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[8.0.1, )",
+              "version": "[8.0.17, )",
               "autoReferenced": true
             },
             "Newtonsoft.Json": {
@@ -94,7 +101,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.411/PortableRuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {
