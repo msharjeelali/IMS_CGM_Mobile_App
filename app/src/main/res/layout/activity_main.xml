@@ -1,53 +1,127 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:gravity="center"
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
-    android:background="#F5F5F5">
+    android:background="#0C1220"> <!-- Dark background -->
 
-    <TextView
-        android:id="@+id/tv_info"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Checking permissions..."
-        android:textSize="18sp"
-        android:textColor="#333333"
-        android:gravity="center"
-        android:padding="16dp" />
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#0C1220"> <!-- Dark blue -->
 
-    <Button
-        android:id="@+id/btn_open_settings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Allow Background Permission"
-        android:layout_marginTop="24dp"/>
+        <!-- Toolbar -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#152037"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            android:title="MyBackgroundApp"
+            android:titleTextColor="#FFFFFF" />
 
-    <Button
-        android:id="@+id/btn_enable_bt"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Enable Bluetooth  Request Permissions"
-        android:layout_marginTop="24dp"/>
-    <Button
-        android:id="@+id/btn_voice_input"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Voice Input for Insulin" />
+        <!-- Glucose Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ask_glucose"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="What is my glucose level?"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#1E3A5F"
+            android:layout_margin="12dp"
+            android:padding="10dp" />
 
-    <Button
-        android:id="@+id/btn_view_entries"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="View Insulin Entries" />
-    <Button
-        android:id="@+id/btn_open_stt"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Test STT"
-        android:layout_marginTop="16dp"/>
+        <!-- Glucose Result -->
+        <TextView
+            android:id="@+id/tv_glucose_result"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:padding="16dp"/>
 
+        <!-- Bluetooth Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_connect_bluetooth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Connect Bluetooth"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#1E3A5F"
+            android:layout_margin="12dp"
+            android:padding="10dp" />
 
+        <!-- Bluetooth Status -->
+        <TextView
+            android:id="@+id/tv_bluetooth_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#AAAAAA"
+            android:textSize="16sp"
+            android:padding="16dp"/>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_manual_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="➕ Manual Input"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#1E3A5F"
+            android:layout_marginTop="16dp"
+            android:layout_marginHorizontal="20dp"
+            />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_voice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Voice Input for Insulin"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#1E3A5F"
+            android:layout_marginTop="12dp"
+            android:layout_marginHorizontal="20dp"
+            />
 
-</LinearLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_view_entries"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=" View Entries"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#1E3A5F"
+            android:layout_marginTop="12dp"
+            android:layout_marginHorizontal="20dp"
+            />
+
+        <!-- Content Frame -->
+        <FrameLayout
+            android:id="@+id/content_frame"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#0C1220"/>
+    </LinearLayout>
+
+    <!-- Navigation Drawer -->
+    <LinearLayout
+        android:id="@+id/nav_drawer"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#1A2233"
+        android:layout_gravity="start">
+
+        <include layout="@layout/drawer_header"
+            android:layout_width="match_parent"
+            android:layout_height="160dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/drawer_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"/>
+    </LinearLayout>
+</androidx.drawerlayout.widget.DrawerLayout>
