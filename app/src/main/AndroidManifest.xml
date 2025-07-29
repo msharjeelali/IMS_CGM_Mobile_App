@@ -1,5 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="np.com.bimalkafle.mybackgroundapp">
+
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -8,29 +10,41 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-
-
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_logo"
         android:label="IMS CGM"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyBackgroundApp">
+        <service
+            android:name=".BluetoothService"
+            android:enabled="true"
+            android:exported="false"></service>
 
-        <activity android:name=".HomeActivity" />
-        <activity android:name=".MainActivity"
+        <activity
+            android:name=".PermissionAcknowledgementActivity"
+            android:exported="false" />
+        <activity
+            android:name=".BackgroundPermissionActivity"
+            android:exported="false" />
+        <activity
+            android:name=".IntroActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".HomeActivity" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"></activity>
         <activity android:name=".InsulinEntriesActivity" />
         <activity android:name=".STTActivity" />
         <activity android:name=".ManualInputActivity" />
         <activity android:name=".ViewEntriesActivity" />
-
     </application>
 
 </manifest>
