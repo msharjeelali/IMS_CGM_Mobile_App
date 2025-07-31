@@ -8,15 +8,12 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="background">#EDF5FD</color>
-    <color name="primary_text">#000000</color>
+    <color name="background">#0F1924</color>
+    <color name="primary_text">#FFFFFF</color>
     <color name="primary_button">#007AFF</color>
 
     <color name="heart_rate_color">#E53935</color>"
     <color name="glucose_one_color">#1E88E5</color>"
     <color name="glucose_two_color">#43A047</color>"
     <color name="glucose_three_color">#FB8C00</color>"
-
-
-
 </resources>
