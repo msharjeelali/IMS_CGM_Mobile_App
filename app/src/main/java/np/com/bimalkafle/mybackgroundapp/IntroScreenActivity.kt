@@ -1,28 +1,27 @@
 package np.com.bimalkafle.mybackgroundapp
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 
-class IntroActivity : AppCompatActivity() {
+class IntroScreenActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_intro) // This line inflates your XML layout
+        setContentView(R.layout.activity_intro_screen)
 
-        val sharedPref = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val sharedPref = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val isFirstRun = sharedPref.getBoolean("isFirstRun", true)
 
         if (!isFirstRun) {
-            val intent = Intent(this, BackgroundPermissionActivity::class.java)
+            val intent = Intent(this, IntroBackgroundPermissionActivity::class.java)
             startActivity(intent)
             finish()
         }
 
         val nextButton: Button = findViewById(R.id.nextButton)
         nextButton.setOnClickListener {
-            val intent = Intent(this, BackgroundPermissionActivity::class.java)
+            val intent = Intent(this, IntroBackgroundPermissionActivity::class.java)
             startActivity(intent)
             finish()
         }
