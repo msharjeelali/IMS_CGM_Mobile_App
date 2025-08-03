@@ -22,5 +22,14 @@
     <string name="ims_cgm_sensor_2">IMS CGM Sensor 2</string>
     <string name="ims_cgm_sensor_3">IMS CGM Sensor 3</string>
     <string name="ims_cgm_sensor_4">IMS CGM Sensor 4</string>
+    <string name="failed_to_connect_message">❌ Failed to connect to %1$s.</string>
+    <string name="connecting_to_device_message">⏳ Connecting to: %1$s...</string>
+    <string name="no_device_connected_message">No device connected.</string>
+    <string name="connected_to_device_message">🟢 Connected to: %1$s</string>
+    <string name="bluetooth_location_permissions_denied_message">❌ Bluetooth/Location permissions denied.</string>
+    <string name="scanning_for_ims_devices_message">🔍 Scanning for IMS devices...</string>
+    <string name="enable_location_message">Please enable Location.</string>
+    <string name="enable_bluetooth_message">Please enable Bluetooth.</string>
+    <string name="bluetooth_not_supported_message">❌ Bluetooth not supported.</string>
 
 </resources>

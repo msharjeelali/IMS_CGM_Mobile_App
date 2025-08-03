@@ -57,7 +57,7 @@
         android:maxWidth="300dp"
         android:text="@string/background_permission_button_text"
         android:textColor="@color/white"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         app:backgroundTint="@color/primary_button"
         tools:ignore="VisualLintButtonSize,TextSizeCheck" />

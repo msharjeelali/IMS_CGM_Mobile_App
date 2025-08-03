@@ -1,38 +1,55 @@
 package np.com.bimalkafle.mybackgroundapp
 
 import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Bundle
-import android.speech.tts.TextToSpeech
-import android.widget.Button
-import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.appcompat.app.ActionBarDrawerToggle
-import java.util.*
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.annotation.RequiresPermission
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import np.com.bimalkafle.mybackgroundapp.BleService.Companion.CHANNEL_ID
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
+    private val notificationId = 101
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var drawerRecycler: RecyclerView
@@ -59,6 +76,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var glucoseTwoDataSet: LineDataSet
     private lateinit var glucoseThreeDataSet: LineDataSet
 
+    // BLE scanning variables
+    private var bleScanner: BluetoothLeScanner? = null
+    private var scanning = false
+    private val scanResults = mutableMapOf<String, BluetoothDevice>()
+    private val handler = Handler(Looper.getMainLooper())
+    private val SCAN_PERIOD: Long = 60000
+
     private val drawerItems = listOf(
         DrawerItem(R.drawable.ic_launcher_foreground, "Dashboard", "Real-time monitoring"),
         DrawerItem(R.drawable.ic_launcher_foreground, "Glucose Monitor", "Live glucose tracking"),
@@ -72,21 +96,30 @@ class MainActivity : AppCompatActivity() {
         DrawerItem(R.drawable.ic_launcher_foreground, "Help", "Support & guides", false)
     )
 
-    private val bluetoothReceiver = object : android.content.BroadcastReceiver() {
+    private val dataReceiver = object : BroadcastReceiver() {
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (BluetoothDevice.ACTION_FOUND == intent?.action) {
-                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                val deviceName = device?.name ?: ""
-                if (deviceName.startsWith("IMS")) {
-                    connectedDeviceName = deviceName
-                    updateBluetoothStatus()
-                    bluetoothAdapter?.cancelDiscovery()
-                    try { unregisterReceiver(this) } catch (_: Exception) {}
+            when (intent?.action) {
+                BleService.ACTION_BLUETOOTH_DATA -> {
+                    val data = intent.getStringExtra("Data received")
+                    Toast.makeText(this@MainActivity, data, Toast.LENGTH_SHORT).show()
+                }
+                BleService.ACTION_BLUETOOTH_DISCONNECTED -> {
+                    tvBluetoothStatus.text = "❌ Disconnected"
+                    tvBluetoothStatus.setTextColor(getColor(R.color.red))
+                }
+                BleService.ACTION_BLUETOOTH_CONNECTED -> {
+                    val deviceName = intent.getStringExtra(BleService.EXTRA_DEVICE_NAME)
+                    tvBluetoothStatus.text = "✅ Connected to: $deviceName"
+                    tvBluetoothStatus.setTextColor(getColor(R.color.green))
                 }
             }
         }
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -119,7 +152,6 @@ class MainActivity : AppCompatActivity() {
         drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
 
-        // Open the drawer automatically on startup for testing
         drawerLayout.openDrawer(findViewById(R.id.nav_drawer))
 
         btnAskGlucose = findViewById(R.id.btn_ask_glucose)
@@ -128,8 +160,9 @@ class MainActivity : AppCompatActivity() {
 
         btnConnectBluetooth = findViewById(R.id.btn_connect_bluetooth)
         tvBluetoothStatus = findViewById(R.id.tv_bluetooth_status)
-        powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        powerManager = getSystemService(POWER_SERVICE) as PowerManager
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        bleScanner = bluetoothAdapter?.bluetoothLeScanner
         connectedDeviceName = null
         updateBluetoothStatus()
 
@@ -137,7 +170,6 @@ class MainActivity : AppCompatActivity() {
             handleBluetoothAndLocationFlow()
         }
 
-        // Insert dummy glucose data if table is empty
         insertDummyGlucoseDataIfNeeded()
 
         tts = TextToSpeech(this) { status ->
@@ -149,22 +181,39 @@ class MainActivity : AppCompatActivity() {
         btnAskGlucose.setOnClickListener {
             val level = glucoseDbHelper.getLatestLevel()
             if (level != null) {
-                val msg = "Your latest glucose level is $level mg/dL."
+                val msg = "$level mg/dL."
                 tvGlucoseResult.text = msg
                 tts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, null)
             } else {
-                val msg = "No glucose data found."
+                val msg = "No data found."
                 tvGlucoseResult.text = msg
                 tts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
 
-        intializeCharts()
+        val filter = IntentFilter().apply {
+            addAction(BleService.ACTION_BLUETOOTH_DATA)
+            addAction(BleService.ACTION_BLUETOOTH_DISCONNECTED)
+            addAction(BleService.ACTION_BLUETOOTH_CONNECTED)
+        }
+        registerReceiver(dataReceiver, filter, RECEIVER_EXPORTED)
 
+        createNotificationChannel()
+
+        intializeCharts()
         sensorOneChart()
         sensorTwoChart()
         sensorThreeChart()
         sensorFourChart()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tts.shutdown()
+        unregisterReceiver(dataReceiver)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            stopBleScan()
+        }
     }
 
     private fun insertDummyGlucoseDataIfNeeded() {
@@ -182,60 +231,101 @@ class MainActivity : AppCompatActivity() {
         cursor.close()
     }
 
-
     private fun handleBluetoothAndLocationFlow() {
         if (bluetoothAdapter == null) {
-            tvBluetoothStatus.text = "❌ Bluetooth not supported."
+            tvBluetoothStatus.text = getString(R.string.bluetooth_not_supported_message)
             return
         }
         if (!bluetoothAdapter!!.isEnabled) {
             val intentBt = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
             startActivity(intentBt)
-            tvBluetoothStatus.text = "Please enable Bluetooth."
+            tvBluetoothStatus.text = getString(R.string.enable_bluetooth_message)
             return
         }
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+        val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
         if (!locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
-            && !locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)) {
+            && !locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+        ) {
             val intentLoc = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
             startActivity(intentLoc)
-            tvBluetoothStatus.text = "Please enable Location."
+            tvBluetoothStatus.text = getString(R.string.enable_location_message)
             return
         }
-        requestBluetoothAndLocationPermissions()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requestBluetoothAndLocationPermissions()
+        }
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun requestBluetoothAndLocationPermissions() {
         val permissions = mutableListOf<String>()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
-            }
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.BLUETOOTH_SCAN)
-            }
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 2002)
         } else {
-            startBluetoothDiscovery()
+            startBleScan()
         }
     }
 
-    private fun startBluetoothDiscovery() {
-        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-        registerReceiver(bluetoothReceiver, filter)
-        bluetoothAdapter?.startDiscovery()
-        tvBluetoothStatus.text = "\uD83D\uDD0D Scanning for IMS devices..."
+    @RequiresApi(Build.VERSION_CODES.S)
+    private val bleScanCallback: ScanCallback = object : ScanCallback() {
+        @SuppressLint("MissingPermission")
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+            super.onScanResult(callbackType, result)
+            if (result.device.name != null && result.device.name.startsWith("IMS")) {
+                stopBleScan()
+                connectToBleDevice(result.device)
+            }
+        }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SuppressLint("MissingPermission")
+    private fun startBleScan() {
+        if (!scanning) {
+            scanning = true
+            scanResults.clear()
+            bleScanner?.startScan(bleScanCallback)
+            tvBluetoothStatus.text = "⏳ Scanning for 'IMS' devices..."
+            tvBluetoothStatus.setTextColor(getColor(R.color.white))
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SuppressLint("MissingPermission")
+    private fun stopBleScan() {
+        if (scanning) {
+            scanning = false
+            bleScanner?.stopScan(bleScanCallback)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             launchSTTActivity()
@@ -243,32 +333,27 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Microphone permission is required", Toast.LENGTH_SHORT).show()
         } else if (requestCode == 2002) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startBluetoothDiscovery()
+                startBleScan()
             } else {
-                tvBluetoothStatus.text = "❌ Bluetooth/Location permissions denied."
+                tvBluetoothStatus.text =
+                    getString(R.string.bluetooth_location_permissions_denied_message)
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        tts.shutdown()
-        try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
-    }
-
     private fun handleDrawerClick(position: Int) {
         when (position) {
-            1 -> { // Glucose Monitor
+            1 -> {
                 checkMicPermissionAndLaunchSTT()
             }
-            // Add other navigation actions here
         }
         drawerLayout.closeDrawers()
     }
 
     private fun checkMicPermissionAndLaunchSTT() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.RECORD_AUDIO),
@@ -286,33 +371,92 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateBluetoothStatus() {
         if (connectedDeviceName != null) {
-            tvBluetoothStatus.text = "\uD83D\uDFE2 Connected to: $connectedDeviceName"
+            tvBluetoothStatus.text =
+                getString(R.string.connected_to_device_message, connectedDeviceName)
+            tvBluetoothStatus.setTextColor(getColor(R.color.green))
         } else {
-            tvBluetoothStatus.text = "No device connected."
+            tvBluetoothStatus.text = getString(R.string.no_device_connected_message)
+            tvBluetoothStatus.setTextColor(getColor(R.color.white))
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun connectToBleDevice(device: BluetoothDevice) {
+        connectedDeviceName = device.name
+        updateBluetoothStatus()
+
+        val serviceIntent = Intent(this, BleService::class.java).apply {
+            putExtra("device", device)
+        }
+        startForegroundService(serviceIntent)
+
+        Toast.makeText(this, "Connecting to BLE device: ${device.name}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun createNotificationChannel() {
+        val name = "Bluetooth Packets"
+        val descriptionText = "Notifications for incoming Bluetooth data"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            description = descriptionText
+        }
+        val notificationManager: NotificationManager =
+            getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun showNotification(title: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w("MainActivity", "POST_NOTIFICATIONS permission not granted.")
+                return
+            }
+        }
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setSmallIcon(R.drawable.ic_bluetooth)
+
+        with(NotificationManagerCompat.from(this)) {
+            notify(notificationId, builder.build())
         }
     }
 
     fun intializeCharts() {
         heartRateChart = findViewById<LineChart>(R.id.heartRateChart)
-        heartRateChart.setExtraOffsets(0f,16f,0f,0f)
+        heartRateChart.setExtraOffsets(0f, 16f, 0f, 0f)
 
         glucoseChartOne = findViewById<LineChart>(R.id.glucoseLevelChartOne)
-        glucoseChartOne.setExtraOffsets(0f,16f,0f,0f)
+        glucoseChartOne.setExtraOffsets(0f, 16f, 0f, 0f)
 
         glucoseChartTwo = findViewById<LineChart>(R.id.glucoseLevelChartTwo)
-        glucoseChartTwo.setExtraOffsets(0f,16f,0f,0f)
+        glucoseChartTwo.setExtraOffsets(0f, 16f, 0f, 0f)
 
         glucoseChartThree = findViewById<LineChart>(R.id.glucoseLevelChartThree)
-        glucoseChartThree.setExtraOffsets(0f,16f,0f,0f)
-
+        glucoseChartThree.setExtraOffsets(0f, 16f, 0f, 0f)
     }
 
     fun sensorOneChart() {
-
         val entries = mutableListOf<Entry>()
         heartRateDataSet = LineDataSet(entries, "Heart Rate")
-        heartRateDataSet.color = ContextCompat.getColor(this@MainActivity,R.color.heart_rate_color)
-        heartRateDataSet.fillColor = ContextCompat.getColor(this@MainActivity,R.color.heart_rate_color)
+        heartRateDataSet.color = ContextCompat.getColor(this@MainActivity, R.color.heart_rate_color)
+        heartRateDataSet.fillColor =
+            ContextCompat.getColor(this@MainActivity, R.color.heart_rate_color)
         heartRateDataSet.setDrawCircles(false)
         heartRateDataSet.lineWidth = 2f
         heartRateDataSet.setDrawFilled(true)
@@ -372,11 +516,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun sensorTwoChart() {
-
         val entries = mutableListOf<Entry>()
         glucoseOneDataSet = LineDataSet(entries, "Glucose Level")
-        glucoseOneDataSet.color = ContextCompat.getColor(this@MainActivity,R.color.glucose_one_color)
-        glucoseOneDataSet.fillColor = ContextCompat.getColor(this@MainActivity,R.color.glucose_one_color)
+        glucoseOneDataSet.color =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_one_color)
+        glucoseOneDataSet.fillColor =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_one_color)
         glucoseOneDataSet.setDrawCircles(false)
         glucoseOneDataSet.lineWidth = 2f
         glucoseOneDataSet.setDrawFilled(true)
@@ -387,7 +532,6 @@ class MainActivity : AppCompatActivity() {
         glucoseChartOne.xAxis.labelRotationAngle = -45f
         glucoseChartOne.animateX(1500)
 
-        // Set Y-axis range and limit lines
         val yAxis = glucoseChartOne.axisLeft
         yAxis.axisMinimum = 40f
         yAxis.axisMaximum = 180f
@@ -419,11 +563,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun sensorThreeChart() {
-
         val entries = mutableListOf<Entry>()
         glucoseTwoDataSet = LineDataSet(entries, "Glucose Level")
-        glucoseTwoDataSet.color = ContextCompat.getColor(this@MainActivity,R.color.glucose_two_color)
-        glucoseTwoDataSet.fillColor = ContextCompat.getColor(this@MainActivity,R.color.glucose_two_color)
+        glucoseTwoDataSet.color =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_two_color)
+        glucoseTwoDataSet.fillColor =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_two_color)
         glucoseTwoDataSet.setDrawCircles(false)
         glucoseTwoDataSet.lineWidth = 2f
         glucoseTwoDataSet.setDrawFilled(true)
@@ -434,7 +579,6 @@ class MainActivity : AppCompatActivity() {
         glucoseChartTwo.xAxis.labelRotationAngle = -45f
         glucoseChartTwo.animateX(1500)
 
-        // Set Y-axis range and limit lines
         val yAxis = glucoseChartTwo.axisLeft
         yAxis.axisMinimum = 40f
         yAxis.axisMaximum = 180f
@@ -466,11 +610,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun sensorFourChart() {
-
         val entries = mutableListOf<Entry>()
         glucoseThreeDataSet = LineDataSet(entries, "Glucose Level")
-        glucoseThreeDataSet.color = ContextCompat.getColor(this@MainActivity,R.color.glucose_three_color)
-        glucoseThreeDataSet.fillColor = ContextCompat.getColor(this@MainActivity,R.color.glucose_three_color)
+        glucoseThreeDataSet.color =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_three_color)
+        glucoseThreeDataSet.fillColor =
+            ContextCompat.getColor(this@MainActivity, R.color.glucose_three_color)
         glucoseThreeDataSet.setDrawCircles(false)
         glucoseThreeDataSet.lineWidth = 2f
         glucoseThreeDataSet.setDrawFilled(true)
@@ -481,7 +626,6 @@ class MainActivity : AppCompatActivity() {
         glucoseChartThree.xAxis.labelRotationAngle = -45f
         glucoseChartThree.animateX(1500)
 
-        // Set Y-axis range and limit lines
         val yAxis = glucoseChartThree.axisLeft
         yAxis.axisMinimum = 40f
         yAxis.axisMaximum = 180f
