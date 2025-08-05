@@ -1,31 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="176dp"
+    android:background="@color/colorPrimary"
+    android:gravity="bottom"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#232F45"
-    android:layout_width="match_parent"
-    android:layout_height="160dp">
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
 
     <ImageView
-        android:src="@drawable/ic_launcher_foreground"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_gravity="center_horizontal" />
+        android:id="@+id/profile_image"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="8dp"
+        android:src="@android:drawable/ic_menu_gallery" />
 
     <TextView
-        android:text="IMS CGM"
-        android:textColor="#3A6BFF"
-        android:textStyle="bold"
-        android:textSize="20sp"
-        android:layout_marginTop="8dp"
-        android:layout_gravity="center_horizontal"
+        android:id="@+id/username"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:text="User Name"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+        android:textColor="@android:color/white" />
 
     <TextView
-        android:text="Medical Monitoring"
-        android:textColor="#B0B8C1"
-        android:textSize="14sp"
-        android:layout_gravity="center_horizontal"
+        android:id="@+id/email"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-</LinearLayout> 
+        android:layout_height="wrap_content"
+        android:text="user@example.com"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body2"
+        android:textColor="@android:color/white" />
+
+</LinearLayout>

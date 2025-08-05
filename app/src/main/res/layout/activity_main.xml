@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:background="#152037"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            android:title="MyBackgroundApp"
+            android:title="Home"
             android:titleTextColor="#FFFFFF" />
 
         <!-- Glucose Button -->
