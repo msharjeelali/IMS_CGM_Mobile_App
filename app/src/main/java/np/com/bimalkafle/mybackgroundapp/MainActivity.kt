@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var powerManager: PowerManager
     private var connectedDeviceName: String? = null
 
+    private val VOICE_INPUT_REQUEST_CODE = 1002
     private var timeIndex = 0f
     private lateinit var heartRateChart: LineChart
     private lateinit var glucoseChartOne: LineChart
@@ -76,7 +77,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var glucoseTwoDataSet: LineDataSet
     private lateinit var glucoseThreeDataSet: LineDataSet
 
-    // BLE scanning variables
     private var bleScanner: BluetoothLeScanner? = null
     private var scanning = false
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
@@ -129,16 +129,21 @@ class MainActivity : AppCompatActivity() {
 
         drawerLayout = findViewById(R.id.drawer_layout)
         drawerRecycler = findViewById(R.id.drawer_recycler)
+
         val btnManualInput: Button = findViewById(R.id.btn_manual_input)
         btnManualInput.setOnClickListener {
             val intent = Intent(this, ManualInputActivity::class.java)
             startActivity(intent)
         }
+
         val btnViewEntries: Button = findViewById(R.id.btn_view_entries)
         btnViewEntries.setOnClickListener {
             val intent = Intent(this, ViewEntriesActivity::class.java)
             startActivity(intent)
         }
+
+        // Setup Voice Input Button
+        setupVoiceInputButton()
 
         drawerRecycler.layoutManager = LinearLayoutManager(this)
         drawerRecycler.adapter = DrawerAdapter(drawerItems) { position ->
@@ -151,9 +156,7 @@ class MainActivity : AppCompatActivity() {
         )
         drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
-
-        drawerLayout.openDrawer(findViewById(R.id.nav_drawer))
-
+        
         btnAskGlucose = findViewById(R.id.btn_ask_glucose)
         tvGlucoseResult = findViewById(R.id.tv_glucose_result)
         glucoseDbHelper = GlucoseDbHelper(this)
@@ -214,6 +217,30 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             stopBleScan()
         }
+    }
+
+    private fun setupVoiceInputButton() {
+        // Find your voice input button (adjust the ID to match your layout)
+        val voiceInputButton = findViewById<Button>(R.id.btn_voice)
+
+        voiceInputButton.setOnClickListener {
+            // Check microphone permission first
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                    arrayOf(Manifest.permission.RECORD_AUDIO),
+                    VOICE_INPUT_REQUEST_CODE)
+            } else {
+                launchVoiceInputActivity()
+            }
+        }
+    }
+
+    private fun launchVoiceInputActivity() {
+        val intent = Intent(this, VoiceInputActivity::class.java)
+        startActivityForResult(intent, VOICE_INPUT_REQUEST_CODE)
+        // Add animation if you have anim folder
+        // overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
     private fun insertDummyGlucoseDataIfNeeded() {
@@ -327,6 +354,116 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            1001 -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    launchSTTActivity()
+                } else {
+                    Toast.makeText(this, "Microphone permission is required", Toast.LENGTH_SHORT).show()
+                }
+            }
+            VOICE_INPUT_REQUEST_CODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    launchVoiceInputActivity()
+                } else {
+                    Toast.makeText(this, "Microphone permission is required for voice input", Toast.LENGTH_SHORT).show()
+                }
+            }
+            2002 -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    startBluetoothDiscovery()
+                } else {
+                    tvBluetoothStatus.text = "❌ Bluetooth/Location permissions denied."
+                }
+            }
+        }
+    }
+
+    // Handle the result from voice input activity
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == VOICE_INPUT_REQUEST_CODE && resultCode == RESULT_OK) {
+            val recognizedText = data?.getStringExtra("insulin_input")
+            if (!recognizedText.isNullOrEmpty()) {
+                handleVoiceInputResult(recognizedText)
+            }
+        }
+    }
+
+    private fun handleVoiceInputResult(voiceText: String) {
+        // Process the recognized text and show result
+        Toast.makeText(this, "Voice input received: $voiceText", Toast.LENGTH_LONG).show()
+
+        // Parse the insulin input
+        parseInsulinInput(voiceText)
+
+        // Optionally speak the confirmation
+        val confirmationMsg = "Received insulin input: $voiceText"
+        tts.speak(confirmationMsg, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    private fun parseInsulinInput(input: String) {
+        // Simple parsing to extract insulin information
+        val lowerInput = input.lowercase()
+
+        // Extract numbers (insulin units)
+        val numbers = Regex("\\d+").findAll(lowerInput).map { it.value.toInt() }.toList()
+
+        // Determine insulin type
+        val insulinType = when {
+            lowerInput.contains("rapid") || lowerInput.contains("fast") -> "Rapid Acting"
+            lowerInput.contains("long") || lowerInput.contains("slow") -> "Long Acting"
+            lowerInput.contains("regular") -> "Regular"
+            else -> "Unknown Type"
+        }
+
+        if (numbers.isNotEmpty()) {
+            val units = numbers.first()
+            showInsulinEntry(units, insulinType, input)
+        } else {
+            Toast.makeText(this, "Could not extract insulin units from: $input", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showInsulinEntry(units: Int, type: String, originalText: String) {
+        // Create a formatted message
+        val message = """
+            📋 Insulin Entry Recorded:
+            💉 Units: $units
+            🏷️ Type: $type
+            🎤 Voice: "$originalText"
+        """.trimIndent()
+
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+        // Here you can:
+        // 1. Save to your insulin database
+        // 2. Update your UI
+        // 3. Add to insulin log/history
+        // 4. Set reminders or alerts
+
+        // Example: Save to database (you'll need to implement this)
+        // saveInsulinEntry(units, type, originalText)
+
+        // Update UI or trigger any other actions
+        updateUIWithNewInsulinEntry(units, type)
+    }
+
+    private fun updateUIWithNewInsulinEntry(units: Int, type: String) {
+        // Update your UI to reflect the new insulin entry
+        // For example, update a TextView or refresh a list
+
+        // Example: Update glucose result TextView to show last insulin entry
+        tvGlucoseResult.text = "Last insulin entry: $units mg/dl"
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tts.shutdown()
+        try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
+    }
+
         if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             launchSTTActivity()
         } else if (requestCode == 1001) {
@@ -340,7 +477,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun handleDrawerClick(position: Int) {
         when (position) {
             1 -> {
