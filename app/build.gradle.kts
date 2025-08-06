@@ -56,13 +56,12 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
 
-        implementation ("androidx.appcompat:appcompat:1.6.1")
-        implementation ("androidx.drawerlayout:drawerlayout:1.2.0")
-//implementation 'com.google.android.material:material:1.11.0'
-
+    implementation ("androidx.appcompat:appcompat:1.6.1")
+    implementation ("androidx.drawerlayout:drawerlayout:1.2.0")
+    //implementation 'com.google.android.material:material:1.11.0'
+    implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     // (Other dependencies you may have)
-
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -72,6 +71,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

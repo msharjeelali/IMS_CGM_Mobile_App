@@ -1,5 +1,35 @@
 <resources>
-    <string name="app_name">MyBackgroundApp</string>
+    <string name="app_name">IMS Constant Glucose Monitoring App</string>
+    <string name="ims_cgm_logo_description">IMS CGM logo</string>
+
+    <string name="welcome_screen_title">Welcome to Your App!</string>
+    <string name="welcome_screen_description">We\'ll need a few permissions to provide the best experience.</string>
+    <string name="welcome_screen_button">Get Started</string>
+    <string name="welcome_screen_text">Welcome to IMS Constant Glucose Monitoring (CGM)! Discover amazing features and simplify your life with our intuitive tools. Get ready to explore!</string>
+    <string name="background_permission_icon_description">Permission Icon</string>
+    <string name="background_permission_title">Background Permission Required</string>
+    <string name="background_permission_text">To provide you with real-time updates and essential features even when the app is closed, we need background permission.</string>
+    <string name="background_permission_button_text">Grant Background Permission</string>
+    <string name="other_permissions_icon_description">Bluetooth Icon\n</string>
+    <string name="other_permissions_button_text">Understood, Continue</string>
+    <string name="other_permissions_text">This app relies on **Bluetooth**, **Location** and **Microphone** permissions to function correctly. Without these, core features such as [mention specific features, e.g., \'device discovery\', \'nearby connections\', \'accurate tracking\', \'voice command\'] will not be available. Please grant them when prompted later.</string>
+    <string name="other_permissions_title"><![CDATA[Bluetooth & Location Permissions]]></string>
+
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="real_time_sensor_monitoring">Real-time Sensor Monitoring</string>
+    <string name="ims_cgm_sensor_1">IMS CGM Sensor 1</string>
+    <string name="ims_cgm_sensor_2">IMS CGM Sensor 2</string>
+    <string name="ims_cgm_sensor_3">IMS CGM Sensor 3</string>
+    <string name="ims_cgm_sensor_4">IMS CGM Sensor 4</string>
+    <string name="failed_to_connect_message">❌ Failed to connect to %1$s.</string>
+    <string name="connecting_to_device_message">⏳ Connecting to: %1$s...</string>
+    <string name="no_device_connected_message">No device connected.</string>
+    <string name="connected_to_device_message">🟢 Connected to: %1$s</string>
+    <string name="bluetooth_location_permissions_denied_message">❌ Bluetooth/Location permissions denied.</string>
+    <string name="scanning_for_ims_devices_message">🔍 Scanning for IMS devices...</string>
+    <string name="enable_location_message">Please enable Location.</string>
+    <string name="enable_bluetooth_message">Please enable Bluetooth.</string>
+    <string name="bluetooth_not_supported_message">❌ Bluetooth not supported.</string>
+
 </resources>
