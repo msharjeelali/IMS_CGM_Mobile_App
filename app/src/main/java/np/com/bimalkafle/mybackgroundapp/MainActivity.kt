@@ -80,7 +80,6 @@ class MainActivity : AppCompatActivity() {
     private var bleScanner: BluetoothLeScanner? = null
     private var scanning = false
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
-    private val handler = Handler(Looper.getMainLooper())
     private val SCAN_PERIOD: Long = 60000
 
     private val drawerItems = listOf(
@@ -210,14 +209,14 @@ class MainActivity : AppCompatActivity() {
         sensorFourChart()
     }
 
-    override fun onDestroy() {
+    /*override fun onDestroy() {
         super.onDestroy()
         tts.shutdown()
         unregisterReceiver(dataReceiver)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             stopBleScan()
         }
-    }
+    }*/
 
     private fun setupVoiceInputButton() {
         // Find your voice input button (adjust the ID to match your layout)
@@ -371,7 +370,7 @@ class MainActivity : AppCompatActivity() {
             }
             2002 -> {
                 if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                    startBluetoothDiscovery()
+                    startBleScan()
                 } else {
                     tvBluetoothStatus.text = "❌ Bluetooth/Location permissions denied."
                 }
@@ -461,22 +460,12 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         tts.shutdown()
-        try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
-    }
-
-        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            launchSTTActivity()
-        } else if (requestCode == 1001) {
-            Toast.makeText(this, "Microphone permission is required", Toast.LENGTH_SHORT).show()
-        } else if (requestCode == 2002) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startBleScan()
-            } else {
-                tvBluetoothStatus.text =
-                    getString(R.string.bluetooth_location_permissions_denied_message)
-            }
+        unregisterReceiver(dataReceiver)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            stopBleScan()
         }
     }
+
     private fun handleDrawerClick(position: Int) {
         when (position) {
             1 -> {
